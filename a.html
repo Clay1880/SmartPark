@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spline Background</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            /* Layer -1: The base background */
+            color: white;
+            font-family: sans-serif;
+        }
+
+        spline-viewer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            /* Layer 0: The robot (Now sits ABOVE the black background) */
+        }
+
+        .content {
+            position: relative;
+            z-index: 1;
+            /* Layer 1: Your text (Sits ABOVE the robot) */
+            padding: 40px;
+
+            /* Optional: If you want users to be able to use their mouse to drag/rotate the 
+               robot in the background, uncomment the line below. */
+            /* pointer-events: none; */
+        }
+
+        /* If you disable pointer-events above, re-enable them for links so they remain clickable */
+        .content a {
+            pointer-events: auto;
+        }
+    </style>
+</head>
+
+<body>
+
+    <script type="module" src="https://unpkg.com/@splinetool/viewer@1.12.74/build/spline-viewer.js"></script>
+    <spline-viewer url="https://prod.spline.design/rdsXo6oyv5hcVdYd/scene.splinecode"></spline-viewer>
+    <div class="content">
+        <h1>Hello world</h1>
+    </div>
+
+</body>
+
+</html>
