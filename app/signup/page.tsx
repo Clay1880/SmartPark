@@ -68,16 +68,17 @@ export default function SignUp() {
             <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-blue-600/20 blur-[120px] rounded-full pointer-events-none"></div>
             <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-cyan-600/20 blur-[120px] rounded-full pointer-events-none"></div>
 
-            {/* Optional: Minimal Logo at the top */}
-            <div className="absolute top-8 left-8">
-                <Link href="/">
-                    <span className="text-2xl font-extrabold bg-gradient-to-r from-blue-500 to-cyan-400 bg-clip-text text-transparent tracking-tight hover:opacity-80 transition-opacity">
-                        ParkSmart
-                    </span>
-                </Link>
-            </div>
+            {/* Main Container - Added padding (py-8) for safe mobile spacing */}
+            <div className="w-full max-w-md relative z-10 py-8">
 
-            <div className="w-full max-w-md relative z-10">
+                {/* Logo safely inside document flow for mobile */}
+                <div className="flex justify-center mb-8">
+                    <Link href="/">
+                        <span className="text-3xl font-extrabold bg-gradient-to-r from-blue-500 to-cyan-400 bg-clip-text text-transparent tracking-tight hover:opacity-80 transition-opacity">
+                            ParkSmart
+                        </span>
+                    </Link>
+                </div>
 
                 {/* Header */}
                 <div className="text-center mb-10">
