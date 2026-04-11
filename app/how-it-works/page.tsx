@@ -1,4 +1,4 @@
-import Navbar from '@/components/Navbar';
+// import Navbar from '@/components/Navbar';
 
 export default function HowItWorks() {
   const steps = [
@@ -38,7 +38,7 @@ export default function HowItWorks() {
 
   return (
     <div className="min-h-screen bg-[#020617] text-white overflow-x-hidden font-sans selection:bg-blue-500/30">
-      <Navbar />
+      {/* <Navbar /> */}
       
       {/* 3D Fixed Background - Scrollbar Fixed! */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden flex items-center justify-center">

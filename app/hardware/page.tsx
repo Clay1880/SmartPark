@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import Navbar from '@/components/Navbar';
+// import Navbar from '@/components/Navbar';
 
 export default function HardwareSetup() {
   const [copied, setCopied] = useState(false);
@@ -78,7 +78,7 @@ void loop() {
 
   return (
     <div className="min-h-screen bg-[#020617] text-white overflow-x-hidden font-sans selection:bg-blue-500/30">
-      <Navbar />
+      {/* <Navbar /> */}
 
       {/* Background Grid */}
       <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden opacity-20">

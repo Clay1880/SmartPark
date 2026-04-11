@@ -1,4 +1,4 @@
-import Navbar from '@/components/Navbar';
+// import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 
 export default function PrivacyPolicy() {
@@ -84,7 +84,7 @@ export default function PrivacyPolicy() {
 
   return (
     <div className="min-h-screen bg-[#020617] text-white overflow-x-hidden font-sans selection:bg-blue-500/30">
-      <Navbar />
+      {/* <Navbar /> */}
 
       {/* Ambient Background Glows */}
       <div className="absolute top-0 left-0 w-full h-[600px] opacity-10 pointer-events-none">
