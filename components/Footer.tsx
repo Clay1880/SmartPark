@@ -23,14 +23,6 @@ export default function Footer() {
             <p className="text-sm leading-relaxed pr-4">
               Revolutionizing urban mobility with real-time IoT sensor integration. Find, book, and secure your parking spot in seconds.
             </p>
-            {/* Social Icons (Placeholders) */}
-            <div className="flex gap-4 pt-2">
-              {['Twitter', 'GitHub', 'LinkedIn'].map((social) => (
-                <a key={social} href={`#${social}`} className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-blue-500/20 hover:border-blue-500/50 hover:text-white transition-all">
-                  <span className="text-xs">{social[0]}</span>
-                </a>
-              ))}
-            </div>
           </div>
 
           {/* Quick Links */}

@@ -57,9 +57,11 @@ export default async function Dashboard() {
             <div className="text-4xl font-black text-white mb-4">
               ₹{walletBalance.toFixed(2)}
             </div>
-            <button className="text-sm font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-lg hover:bg-emerald-500/20 transition-colors">
+            <Link href="/wallet">
+            <button className="text-sm font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-lg hover:bg-emerald-500/20 transition-colors cursor-pointer">
               + Add Funds
             </button>
+            </Link>
           </div>
 
           {/* DYNAMIC ACTIVE PARKING CARD */}
