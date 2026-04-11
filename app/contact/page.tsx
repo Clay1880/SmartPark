@@ -1,10 +1,10 @@
 "use client";
-import Navbar from '@/components/Navbar';
+// import Navbar from '@/components/Navbar';
 
 export default function ContactUs() {
   return (
     <div className="min-h-screen bg-[#020617] text-white overflow-x-hidden font-sans selection:bg-blue-500/30">
-      <Navbar />
+      {/* <Navbar /> */}
 
       {/* Ambient Background Glows */}
       <div className="fixed top-0 left-0 w-[50vw] h-[50vh] rounded-full bg-blue-600/10 blur-[120px] pointer-events-none"></div>
