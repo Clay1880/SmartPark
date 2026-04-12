@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -9,43 +9,55 @@ type Spot = {
   isHardwareSensor: boolean;
 };
 
-// 1. We generate the grid outside the component. 
-// This guarantees the data exists the exact millisecond the page loads!
-const generateGrid = (): Spot[] => {
+const generateBaseGrid = (): Spot[] => {
   const rows = ["A", "B", "C", "D", "E", "F"];
   const cols = [1, 2, 3, 4, 5, 6, 7, 8];
   const initialSpots: Spot[] = [];
-
   rows.forEach((row) => {
     cols.forEach((col) => {
       const spotId = `${row}${col}`;
-      const isRealSensor = spotId === "A1" || spotId === "A2" || spotId === "A3";
-      
-      // Deterministic fake-randomness. Because it doesn't use Math.random(), 
-      // Next.js won't throw hydration errors, and it won't disappear on back navigation!
-      const pseudoRandom = (row.charCodeAt(0) + col) % 3 !== 0; 
-      
       initialSpots.push({
         id: spotId,
-        isAvailable: isRealSensor ? true : pseudoRandom,
-        isHardwareSensor: isRealSensor,
+        isAvailable: true, // Default to true, API will override this
+        isHardwareSensor: spotId === "A1" || spotId === "A2" || spotId === "A3",
       });
     });
   });
   return initialSpots;
 };
 
-const INITIAL_SPOTS = generateGrid();
-
 export default function LiveMapPage() {
   const router = useRouter();
-  
-  // 2. Initialize state directly with the pre-built grid (No useEffect needed)
-  const [spots] = useState<Spot[]>(INITIAL_SPOTS);
+  const [spots, setSpots] = useState<Spot[]>(generateBaseGrid());
   const [filter, setFilter] = useState<'all' | 'available' | 'occupied'>('all');
   const [toastMessage, setToastMessage] = useState<{show: boolean, title: string, desc: string} | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // 3. Derived state: Always calculates perfectly without needing its own setState
+  // FETCH LIVE DATA FROM DATABASE
+  useEffect(() => {
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch("/api/slots/status");
+        const data = await res.json();
+        const occupiedIds = data.occupiedSpots || [];
+
+        setSpots(prevSpots => 
+          prevSpots.map(spot => ({
+            ...spot,
+            // A spot is available ONLY if it's NOT in the occupied list from DB
+            isAvailable: !occupiedIds.includes(spot.id)
+          }))
+        );
+      } catch (err) {
+        console.error("Failed to sync map with database");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStatus();
+  }, []);
+
   const availableCount = spots.filter((s) => s.isAvailable).length;
 
   const handleSpotClick = (spot: Spot) => {
@@ -54,15 +66,15 @@ export default function LiveMapPage() {
     } else {
       setToastMessage({
         show: true,
-        title: "Spot Unavailable",
-        desc: `Parking slot ${spot.id} is currently occupied by another vehicle.`
+        title: "Spot Occupied",
+        desc: `Slot ${spot.id} has an active reservation.`
       });
       setTimeout(() => setToastMessage(null), 3000);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white flex flex-col items-center pt-24 px-4 pb-12 relative overflow-hidden font-sans selection:bg-blue-500/30">
+    <div className="min-h-screen bg-[#020617] text-white flex flex-col items-center pt-24 px-4 pb-12 relative overflow-hidden font-sans">
       <div className="absolute top-1/4 right-1/4 w-[40vw] h-[40vw] bg-cyan-600/10 blur-[120px] rounded-full pointer-events-none"></div>
 
       {toastMessage && (
@@ -83,10 +95,8 @@ export default function LiveMapPage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
             <Link href="/dashboard" className="text-slate-400 hover:text-white transition-colors text-sm font-medium flex items-center gap-2 mb-2">&larr; Back to Dashboard</Link>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-extrabold tracking-tight">AIT Main Campus Lot</h1>
-            </div>
-            <p className="text-slate-400 mt-1 text-sm">Static IoT sensor data view</p>
+            <h1 className="text-3xl font-extrabold tracking-tight">AIT Main Campus Lot</h1>
+            <p className="text-slate-400 mt-1 text-sm">{isLoading ? "Syncing with database..." : "Live database status"}</p>
           </div>
 
           <div className="flex gap-4">
@@ -104,7 +114,7 @@ export default function LiveMapPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-6">
           <div className="flex items-center gap-6 text-sm font-medium">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 rounded-md bg-emerald-500/20 border border-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]"></div>
+              <div className="w-4 h-4 rounded-md bg-emerald-500/20 border border-emerald-500"></div>
               <span className="text-slate-300">Available</span>
             </div>
             <div className="flex items-center gap-2">
@@ -114,13 +124,13 @@ export default function LiveMapPage() {
           </div>
 
           <div className="flex bg-[#0f172a] border border-white/10 rounded-xl p-1 shadow-lg">
-            <button onClick={() => setFilter('all')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter === 'all' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>All Spots</button>
-            <button onClick={() => setFilter('available')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter === 'available' ? 'bg-emerald-500/20 text-emerald-400 shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>Available</button>
-            <button onClick={() => setFilter('occupied')} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${filter === 'occupied' ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>Occupied</button>
+            {['all', 'available', 'occupied'].map((f) => (
+              <button key={f} onClick={() => setFilter(f as any)} className={`px-4 py-2 rounded-lg text-sm font-bold transition-all capitalize ${filter === f ? 'bg-white/10 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>{f}</button>
+            ))}
           </div>
         </div>
 
-        <div className="bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl">
+        <div className={`bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl transition-opacity duration-500 ${isLoading ? 'opacity-50' : 'opacity-100'}`}>
           <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-8 gap-3 sm:gap-4">
             {spots.map((spot) => {
               const isVisible = filter === 'all' || (filter === 'available' && spot.isAvailable) || (filter === 'occupied' && !spot.isAvailable);
@@ -132,22 +142,15 @@ export default function LiveMapPage() {
                     relative group flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-300 cursor-pointer
                     ${spot.isAvailable 
                       ? "bg-emerald-500/10 border-emerald-500/50 hover:bg-emerald-500/20 hover:scale-105 shadow-[0_0_15px_rgba(16,185,129,0.15)]" 
-                      : "bg-white/5 border-white/5 hover:border-rose-500/30 hover:bg-rose-500/5"
+                      : "bg-white/5 border-white/5 opacity-40 hover:border-rose-500/30"
                     }
                     ${isVisible ? "opacity-100" : "opacity-0 pointer-events-none"}
                   `}
                 >
-                  <span className={`text-xl font-black tracking-tighter transition-colors ${spot.isAvailable ? "text-emerald-400" : "text-slate-500 group-hover:text-rose-400"}`}>
-                    {spot.id}
-                  </span>
+                  <span className={`text-xl font-black tracking-tighter ${spot.isAvailable ? "text-emerald-400" : "text-slate-500"}`}>{spot.id}</span>
                   {spot.isHardwareSensor && (
-                    <div className="absolute top-2 right-2" title="Connected to ESP32">
-                      <svg className={`w-3 h-3 ${spot.isAvailable ? "text-emerald-400" : "text-slate-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                    </div>
-                  )}
-                  {!spot.isAvailable && (
-                    <div className="absolute inset-0 flex items-center justify-center opacity-30 pointer-events-none group-hover:opacity-20 transition-opacity">
-                       <svg className="w-10 h-10 text-slate-400 group-hover:text-rose-400 transition-colors" fill="currentColor" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>
+                    <div className="absolute top-2 right-2 text-blue-400">
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
                     </div>
                   )}
                 </button>

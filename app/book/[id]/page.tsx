@@ -12,7 +12,10 @@ export default function BookSlotPage() {
   const [hours, setHours] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<React.ReactNode>("");
+  
+  // NEW: State to hold the unique ID returned from the database
+  const [bookingId, setBookingId] = useState<string | null>(null);
 
   const hourlyRate = 100; // ₹50 per hour
   const gst = Math.floor(0.18 * hours * hourlyRate)
@@ -36,19 +39,30 @@ export default function BookSlotPage() {
 
       // 2. If the backend rejected it (e.g. 400 Insufficient Funds)
       if (!res.ok) {
-        // This will now correctly show your "Insufficient funds" message!
-        // If it's a server crash, it will show "Server Error: 500" instead.
-        setError(data?.message || `Server Error: ${res.status}. Check your terminal.`);
+        setError(
+          <span className="flex flex-col items-center gap-2 mt-1">
+            <span>{data?.message || `Server Error: ${res.status}. Check your terminal.`}</span>
+            <Link 
+              href="/wallet" 
+              className="inline-block bg-rose-500/20 border border-rose-500/50 text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-rose-500/40 hover:scale-105 transition-all shadow-md"
+            >
+              Add funds to Wallet &rarr;
+            </Link>
+          </span>
+        );
         setIsLoading(false);
         return; 
       }
 
-      // 3. Success!
+      // Capture the ID and trigger the success screen!
+      setBookingId(data.bookingId);
       setIsSuccess(true);
+      
+      // Increased to 4.5 seconds so they can see their ID
       setTimeout(() => {
         router.push("/dashboard");
         router.refresh();
-      }, 2000);
+      }, 4500);
 
     } catch (err: any) {
       console.error("Booking Error:", err);
@@ -81,15 +95,22 @@ export default function BookSlotPage() {
           
           {/* Success Overlay */}
           {isSuccess && (
-            <div className="absolute inset-0 bg-[#0f172a]/95 backdrop-blur-md flex flex-col justify-center items-center z-20 animate-in fade-in duration-300">
+            <div className="absolute inset-0 bg-[#0f172a]/95 backdrop-blur-md flex flex-col justify-center items-center z-20 animate-in fade-in duration-300 p-6">
               <div className="w-16 h-16 bg-blue-500/20 text-blue-400 rounded-full flex items-center justify-center mb-4 border border-blue-500/50">
                 <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="3">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">Slot Confirmed!</h2>
-              <p className="text-slate-400 text-center px-4">You have successfully booked {spotId} for {hours} hour(s).</p>
-              <p className="text-sm text-slate-500 mt-6 animate-pulse">Navigating to Dashboard...</p>
+              
+              {/* THE DIGITAL TICKET UI */}
+              <div className="bg-[#020617]/50 border border-white/10 rounded-xl p-5 my-4 w-full text-center shadow-inner">
+                 <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Your Entry Pass</p>
+                 <p className="text-3xl font-mono font-black text-cyan-400 tracking-wider">{bookingId}</p>
+              </div>
+
+              <p className="text-sm text-slate-400 text-center px-4">Show this ID at the parking entrance.</p>
+              <p className="text-xs text-slate-500 mt-8 animate-pulse">Navigating to Dashboard...</p>
             </div>
           )}
 

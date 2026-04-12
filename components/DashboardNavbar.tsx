@@ -2,14 +2,14 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation'; // <-- We added this!
-import { signOut } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
+import { signOut, useSession } from 'next-auth/react'; // <-- Added useSession!
 
 export default function DashboardNavbar() {
+  const { data: session } = useSession(); // Fetch the logged-in user
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
-  // Get the current URL path
   const pathname = usePathname();
 
   useEffect(() => {
@@ -24,8 +24,10 @@ export default function DashboardNavbar() {
     };
   }, []);
 
-  // Helper function to check if a link is active
   const isActive = (path: string) => pathname === path;
+  
+  // Helper to grab the first letter of their name for the avatar
+  const getInitials = (name: string) => name ? name.charAt(0).toUpperCase() : "U";
 
   return (
     <nav className="fixed w-full z-50 bg-[#0f172a]/80 backdrop-blur-md border-b border-white/10 shadow-lg">
@@ -41,25 +43,24 @@ export default function DashboardNavbar() {
             </Link>
             
             <div className="hidden md:flex space-x-8">
-              {/* Dynamic Links! They change color based on the URL */}
-              <a 
+              <Link 
                 href="/dashboard" 
                 className={`px-3 py-2 text-sm font-semibold transition-colors ${isActive('/dashboard') ? 'text-white' : 'text-slate-400 hover:text-white'}`}
               >
                 Dashboard
-              </a>
-              <a 
+              </Link>
+              <Link 
                 href="/locations" 
                 className={`px-3 py-2 text-sm font-semibold transition-colors ${isActive('/locations') ? 'text-white' : 'text-slate-400 hover:text-white'}`}
               >
                 Live Lots
-              </a>
-              <a 
+              </Link>
+              <Link 
                 href="/wallet" 
                 className={`px-3 py-2 text-sm font-semibold transition-colors ${isActive('/wallet') ? 'text-white' : 'text-slate-400 hover:text-white'}`}
               >
                 Wallet
-              </a>
+              </Link>
             </div>
           </div>
 
@@ -69,22 +70,34 @@ export default function DashboardNavbar() {
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center gap-3 focus:outline-none transition-transform active:scale-95"
             >
+              {/* Display Name on Desktop */}
+              <div className="hidden text-right md:block">
+                <p className="text-sm font-bold text-white leading-tight">{session?.user?.name || "Driver"}</p>
+              </div>
+
+              {/* Dynamic Initials Avatar */}
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 p-[2px] shadow-md hover:shadow-lg transition-shadow">
-                <div className="w-full h-full rounded-full bg-[#020617] flex items-center justify-center border border-[#020617]">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
+                <div className="w-full h-full rounded-full bg-[#020617] flex items-center justify-center border border-[#020617] text-white font-bold">
+                  {getInitials(session?.user?.name || "Driver")}
                 </div>
               </div>
             </button>
 
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-3 w-48 rounded-xl bg-[#0f172a] border border-white/10 shadow-2xl z-50 overflow-hidden transform origin-top-right transition-all">
+              <div className="absolute right-0 mt-3 w-56 rounded-xl bg-[#0f172a] border border-white/10 shadow-2xl z-50 overflow-hidden transform origin-top-right transition-all">
                 <div className="py-1">
-                  <Link href="/profile" className="block px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
-                    Profile Settings
-                  </Link>
-                  <Link href="/history" className="block px-4 py-2.5 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+                  
+                  {/* Mobile-only User Info inside dropdown */}
+                  <div className="px-4 py-3 border-b border-white/10 mb-1 md:hidden">
+                    <p className="text-sm font-bold text-white truncate">{session?.user?.name || "Driver"}</p>
+                    <p className="text-xs text-slate-400 truncate">{session?.user?.email}</p>
+                  </div>
+
+                  <Link 
+                    href="/history" 
+                    onClick={() => setIsDropdownOpen(false)}
+                    className="block px-4 py-2.5 text-sm text-cyan-400 font-medium hover:bg-white/5 hover:text-cyan-300 transition-colors"
+                  >
                     Parking History
                   </Link>
                   

@@ -13,24 +13,36 @@ export default async function Dashboard() {
   }
 
   let walletBalance = 0;
-  let activeParking = false;
-  let currentSessionId = null;
   let userName = session.user.name || "Driver";
+  
+  // NEW: Instead of singular variables, we use an array to hold all active bookings!
+  let activeBookings: any[] = [];
 
-  // 4. Fetch the real, live data from Firebase Firestore
   try {
+    // 1. Fetch User Data (Wallet Balance & Name)
     const usersRef = db.collection('users');
-    const snapshot = await usersRef.where('email', '==', session.user.email).get();
+    const userSnapshot = await usersRef.where('email', '==', session.user.email).get();
 
-    if (!snapshot.empty) {
-      const userData = snapshot.docs[0].data();
+    if (!userSnapshot.empty) {
+      const userData = userSnapshot.docs[0].data();
       walletBalance = userData.walletBalance || 0;
-      activeParking = userData.activeParking || false;
-      currentSessionId = userData.currentSessionId || null;
       userName = userData.username || userName;
     }
+
+    // 2. Fetch ALL Live Booking Data! (Removed the .limit(1))
+    const bookingsRef = db.collection('bookings');
+    const bookingSnapshot = await bookingsRef
+      .where('userEmail', '==', session.user.email)
+      .where('status', '==', 'active')
+      .get();
+
+    if (!bookingSnapshot.empty) {
+      // Map all documents into our array
+      activeBookings = bookingSnapshot.docs.map(doc => doc.data());
+    }
+
   } catch (error) {
-    console.error("Error fetching user data from Firebase:", error);
+    console.error("Error fetching data from Firebase:", error);
   }
 
   return (
@@ -48,58 +60,88 @@ export default async function Dashboard() {
           <p className="text-slate-400">Here is your parking status and account overview.</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        {/* Changed grid layout to automatically adapt based on how many tickets exist */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
           
-          {/* DYNAMIC WALLET CARD */}
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-[40px] group-hover:bg-emerald-500/20 transition-colors"></div>
-            <h3 className="text-slate-400 font-medium text-sm mb-1 uppercase tracking-wider">Wallet Balance</h3>
-            <div className="text-4xl font-black text-white mb-4">
-              ₹{walletBalance.toFixed(2)}
+          {/* 1. DYNAMIC WALLET CARD (Always visible) */}
+          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl relative overflow-hidden group flex flex-col justify-between h-full">
+            <div>
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-[40px] group-hover:bg-emerald-500/20 transition-colors"></div>
+              <h3 className="text-slate-400 font-medium text-sm mb-1 uppercase tracking-wider">Wallet Balance</h3>
+              <div className="text-4xl font-black text-white mb-6">
+                ₹{walletBalance.toFixed(2)}
+              </div>
             </div>
-            <Link href="/wallet">
-            <button className="text-sm font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2 rounded-lg hover:bg-emerald-500/20 transition-colors cursor-pointer">
-              + Add Funds
-            </button>
+            <Link href="/wallet" className="w-full">
+              <button className="w-full text-sm font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 rounded-xl hover:bg-emerald-500/20 transition-colors cursor-pointer">
+                + Add Funds
+              </button>
             </Link>
           </div>
 
-          {/* DYNAMIC ACTIVE PARKING CARD */}
-          <div className={`backdrop-blur-xl border rounded-3xl p-6 shadow-xl relative overflow-hidden transition-all
-            ${activeParking ? 'bg-blue-900/20 border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.1)]' : 'bg-white/5 border-white/10'}
-          `}>
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-slate-400 font-medium text-sm uppercase tracking-wider">Active Parking</h3>
-              {activeParking && (
-                <span className="flex h-3 w-3 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
-                </span>
-              )}
-            </div>
-
-            {activeParking ? (
-              <>
-                <div className="text-2xl font-bold text-white mb-1">Vehicle Parked</div>
-                <div className="text-slate-400 text-sm mb-4">Session Active • Auto-pay enabled</div>
-                <div className="text-blue-400 text-sm font-mono bg-blue-500/10 px-3 py-1.5 rounded inline-block border border-blue-500/20">
-                  ID: {currentSessionId || 'PENDING'}
+          {/* 2. DYNAMIC TICKETS (Maps through every active booking) */}
+          {activeBookings.length > 0 ? (
+            activeBookings.map((booking, index) => (
+              <div key={index} className="bg-blue-900/20 border border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.1)] backdrop-blur-xl rounded-3xl p-6 relative overflow-hidden transition-all flex flex-col justify-between h-full">
+                
+                {/* Top Section: Spot & Status */}
+                <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <h3 className="text-blue-300 font-bold text-sm uppercase tracking-wider">Reserved Slot</h3>
+                    <span className="flex h-3 w-3 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500"></span>
+                    </span>
+                  </div>
+                  
+                  <div className="text-5xl font-black text-white mb-1">{booking.spotId}</div>
+                  
+                  <div className="text-emerald-400 text-sm font-medium mt-2 flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Ready for Arrival
+                  </div>
                 </div>
-              </>
-            ) : (
-              <>
-                <div className="text-xl font-bold text-slate-300 mb-2 mt-4">No vehicle parked</div>
-                <p className="text-slate-500 text-sm">Your vehicle is currently not detected in any ParkSmart facility.</p>
-              </>
-            )}
-          </div>
 
-          {/* HISTORY CARD */}
-          <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 shadow-xl">
-            <h3 className="text-slate-400 font-medium text-sm mb-1 uppercase tracking-wider">Total Time Parked</h3>
-            <div className="text-4xl font-black text-white mb-4">0<span className="text-xl text-slate-500 font-medium ml-1">hrs</span></div>
-            <p className="text-sm text-slate-400">Your parking history will appear here.</p>
-          </div>
+                {/* Bottom Section: ID Pass */}
+                <div className="mt-6">
+  <div className="bg-[#020617]/60 border border-blue-500/30 rounded-xl p-4 w-full shadow-inner flex justify-between items-center">
+    
+    {/* Left Side: Entry Pass ID */}
+    <div className="text-left">
+      <p className="text-[10px] text-blue-400 uppercase tracking-widest mb-1 font-bold">Entry Pass ID</p>
+      <p className="text-lg sm:text-xl font-mono font-black text-cyan-400 tracking-wider">{booking.bookingId}</p>
+    </div>
+
+    {/* Subtle Vertical Divider */}
+    <div className="w-px h-10 bg-blue-500/30 mx-3"></div>
+
+    {/* Right Side: Duration */}
+    <div className="text-right">
+      <p className="text-[10px] text-blue-400 uppercase tracking-widest mb-1 font-bold">Duration</p>
+      <p className="text-lg sm:text-xl font-black text-white">
+        {booking.hours}
+        <span className="text-xs sm:text-sm text-slate-400 font-medium ml-1">
+          hr{booking.hours > 1 ? 's' : ''}
+        </span>
+      </p>
+    </div>
+
+  </div>
+</div>
+              </div>
+            ))
+          ) : (
+            
+            /* EMPTY STATE: Shown only if they have 0 bookings */
+            <div className="bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-6 shadow-xl flex flex-col items-center justify-center text-center py-12 md:col-span-2 lg:col-span-2 h-full">
+              <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4 border border-white/10">
+                <svg className="w-8 h-8 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+              </div>
+              <div className="text-xl font-bold text-slate-300 mb-2">No active bookings</div>
+              <p className="text-slate-500 text-sm max-w-sm">You haven't reserved any spots yet. Check the live map to find parking.</p>
+            </div>
+            
+          )}
 
         </div>
 
