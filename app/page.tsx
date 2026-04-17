@@ -34,13 +34,12 @@ export default async function Home() {
                   </span>
                   <Link 
                     href="/dashboard" 
-                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-bold hover:from-blue-500 hover:to-cyan-400 transition-all shadow-[0_0_15px_rgba(59,130,246,0.4)] transform active:scale-95"
+                    className="px-2 py-2.5 rounded-xl bg-linear-to-r from-blue-600 to-cyan-500 text-white font-bold hover:from-blue-500 hover:to-cyan-400 transition-all shadow-[0_0_15px_rgba(59,130,246,0.4)] transform active:scale-95"
                   >
                     Go to Dashboard &rarr;
                   </Link>
                 </div>
               ) : (
-                // IF LOGGED OUT: Show the standard Login and Signup buttons
                 <>
                   <Link 
                     href="/login" 

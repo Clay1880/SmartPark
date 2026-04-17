@@ -1,21 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
 import Link from "next/link";
+import { db } from '@/lib/firebase';
 
 export default function BookSlotPage() {
   const router = useRouter();
-  const params = useParams(); // This grabs the "A1" or "C4" directly from the URL!
+  const params = useParams();
   const spotId = params.id as string;
 
   const [hours, setHours] = useState<number>(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<React.ReactNode>("");
-  
+
   // NEW: State to hold the unique ID returned from the database
   const [bookingId, setBookingId] = useState<string | null>(null);
+
+  const [startTime, setStartTime] = useState<string>("");
+  const [endTime, setEndTime] = useState<string>("");
+
+  useEffect(() => {
+    const now = new Date();
+    const currentH = now.getHours().toString().padStart(2, '0');
+    const currentM = now.getMinutes().toString().padStart(2, '0');
+    setStartTime(`${currentH}:${currentM}`);
+  }, []);
+
+  // NEW: Automatically calculate the End Time whenever Start Time or Hours change
+  useEffect(() => {
+    if (!startTime) return;
+    const [h, m] = startTime.split(":").map(Number);
+    const totalH = h + hours;
+    const endH = totalH % 24; // Keeps it within a 24-hour clock
+    const isNextDay = totalH >= 24;
+
+    const formattedEnd = `${endH.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')} ${isNextDay ? '(Next Day)' : ''}`;
+    setEndTime(formattedEnd);
+  }, [startTime, hours]);
 
   const hourlyRate = 100; // ₹50 per hour
   const gst = Math.floor(0.18 * hours * hourlyRate)
@@ -30,7 +55,8 @@ export default function BookSlotPage() {
       const res = await fetch("/api/book", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ spotId, hours, totalCost }),
+        // NEW: Added startTime to the backend payload!
+        body: JSON.stringify({ spotId, hours, totalCost, startTime }),
       });
 
       // 1. SAFELY check if the response is JSON before trying to parse it
@@ -38,26 +64,35 @@ export default function BookSlotPage() {
       const data = isJson ? await res.json() : null;
 
       // 2. If the backend rejected it (e.g. 400 Insufficient Funds)
+      // 2. If the backend rejected it
       if (!res.ok) {
+        const errorMessage = data?.message || `Server Error: ${res.status}. Check your terminal.`;
+
+        // NEW: Only show the wallet button if the error is actually about money!
+        const isWalletError = errorMessage.includes("Insufficient funds");
+
         setError(
           <span className="flex flex-col items-center gap-2 mt-1">
-            <span>{data?.message || `Server Error: ${res.status}. Check your terminal.`}</span>
-            <Link 
-              href="/wallet" 
-              className="inline-block bg-rose-500/20 border border-rose-500/50 text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-rose-500/40 hover:scale-105 transition-all shadow-md"
-            >
-              Add funds to Wallet &rarr;
-            </Link>
+            <span>{errorMessage}</span>
+
+            {isWalletError && (
+              <Link
+                href="/wallet"
+                className="inline-block bg-rose-500/20 border border-rose-500/50 text-white px-4 py-1.5 rounded-lg text-sm font-bold hover:bg-rose-500/40 hover:scale-105 transition-all shadow-md"
+              >
+                Add funds to Wallet &rarr;
+              </Link>
+            )}
           </span>
         );
         setIsLoading(false);
-        return; 
+        return;
       }
 
       // Capture the ID and trigger the success screen!
       setBookingId(data.bookingId);
       setIsSuccess(true);
-      
+
       // Increased to 4.5 seconds so they can see their ID
       setTimeout(() => {
         router.push("/dashboard");
@@ -73,12 +108,12 @@ export default function BookSlotPage() {
 
   return (
     <div className="min-h-screen bg-[#020617] text-white flex flex-col items-center pt-24 px-4 relative overflow-hidden font-sans selection:bg-blue-500/30">
-      
+
       {/* Background Ambient Glows */}
       <div className="absolute top-0 right-0 w-[50vw] h-[50vw] bg-blue-600/10 blur-[150px] rounded-full pointer-events-none"></div>
 
       <div className="w-full max-w-md relative z-10">
-        
+
         {/* Header */}
         <div className="mb-8">
           <Link href="/locations" className="text-slate-400 hover:text-white transition-colors text-sm font-medium flex items-center gap-2 mb-4">
@@ -92,7 +127,7 @@ export default function BookSlotPage() {
 
         {/* The Glass Panel */}
         <div className="bg-[#0f172a]/80 backdrop-blur-xl border border-white/10 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-          
+
           {/* Success Overlay */}
           {isSuccess && (
             <div className="absolute inset-0 bg-[#0f172a]/95 backdrop-blur-md flex flex-col justify-center items-center z-20 animate-in fade-in duration-300 p-6">
@@ -102,11 +137,11 @@ export default function BookSlotPage() {
                 </svg>
               </div>
               <h2 className="text-2xl font-bold text-white mb-2">Slot Confirmed!</h2>
-              
+
               {/* THE DIGITAL TICKET UI */}
               <div className="bg-[#020617]/50 border border-white/10 rounded-xl p-5 my-4 w-full text-center shadow-inner">
-                 <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Your Entry Pass</p>
-                 <p className="text-3xl font-mono font-black text-cyan-400 tracking-wider">{bookingId}</p>
+                <p className="text-xs text-slate-500 uppercase tracking-widest mb-1">Your Entry Pass</p>
+                <p className="text-3xl font-mono font-black text-cyan-400 tracking-wider">{bookingId}</p>
               </div>
 
               <p className="text-sm text-slate-400 text-center px-4">Show this ID at the parking entrance.</p>
@@ -115,19 +150,32 @@ export default function BookSlotPage() {
           )}
 
           <form onSubmit={handleBooking} className="space-y-6">
-            
+
             {error && (
               <div className="bg-rose-500/10 border border-rose-500/50 rounded-lg p-3 text-sm text-rose-400 text-center font-medium">
                 {error}
               </div>
             )}
 
+            {/* NEW: Start Time Selector */}
+            <div>
+              <label className="text-sm font-medium text-slate-300 mb-3 block">Arrival Time</label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                style={{ colorScheme: "dark" }} // Forces the calendar icon to be white
+                className="w-full bg-[#020617]/50 border border-white/10 rounded-xl p-4 text-white font-mono focus:outline-none focus:border-blue-500/50 transition-colors"
+                required
+              />
+            </div>
+
             {/* Duration Selector */}
             <div>
               <label className="text-sm font-medium text-slate-300 mb-3 block">Estimated Duration</label>
               <div className="flex items-center justify-between bg-[#020617]/50 border border-white/10 rounded-xl p-2">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setHours(Math.max(1, hours - 1))}
                   className="w-12 h-12 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-xl font-bold"
                 >
@@ -136,8 +184,8 @@ export default function BookSlotPage() {
                 <div className="text-xl font-black">
                   {hours} <span className="text-sm font-medium text-slate-400">Hour{hours > 1 ? 's' : ''}</span>
                 </div>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setHours(Math.min(24, hours + 1))}
                   className="w-12 h-12 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-xl font-bold"
                 >
@@ -148,6 +196,13 @@ export default function BookSlotPage() {
 
             {/* Order Summary */}
             <div className="bg-white/5 rounded-xl p-4 border border-white/10 space-y-3">
+
+              {/* NEW: Display the calculated Parking Window */}
+              <div className="flex justify-between text-sm text-slate-400 pb-2 border-b border-white/5">
+                <span>Parking Window</span>
+                <span className="font-mono text-cyan-400 font-bold">{startTime || "--:--"} &rarr; {endTime || "--:--"}</span>
+              </div>
+
               <div className="flex justify-between text-sm text-slate-400">
                 <span>Rate per hour</span>
                 <span>₹{hourlyRate}.00</span>

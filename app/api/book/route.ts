@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '@/lib/auth';
 import { db } from '@/lib/firebase';
 
-// Helper to generate a cool, readable Booking ID (e.g., PS-A1-X9B2)
 const generateBookingId = (spotId: string) => {
   const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `PS-${spotId}-${randomChars}`;
@@ -16,6 +15,15 @@ export async function POST(req: NextRequest) {
 
     const { spotId, hours, totalCost } = await req.json();
     if (!spotId || !hours || !totalCost) return NextResponse.json({ message: 'Missing booking details' }, { status: 400 });
+
+    const existingBooking = await db.collection('bookings')
+      .where('spotId', '==', spotId)
+      .where('status', '==', 'active')
+      .get();
+
+    if (!existingBooking.empty) {
+      return NextResponse.json({ message: `Spot ${spotId} is already occupied. Please select another spot.` }, { status: 400 });
+    }
 
     const usersRef = db.collection('users');
     const snapshot = await usersRef.where('email', '==', session.user.email).get();
